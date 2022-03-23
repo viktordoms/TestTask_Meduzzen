@@ -1,0 +1,42 @@
+version: "3"
+
+services:
+  web:
+    build:
+      context: ./
+      dockerfile: ./web/Dockerfile
+    container_name: "flask_MeduzZen_container"
+    volumes:
+      - .:/application
+    ports:
+      - "8003:8004"
+    env_file:
+      - .env
+    depends_on:
+      - db
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - web
+
+  db:
+    image: mysql:8.0.27
+    container_name: "db_MeduzZen_container"
+    ports:
+      - "3312:3306"
+    environment:
+      MYSQL_DATABASE: 'db_MeduzZen'
+      MYSQL_USER: 'user'
+      MYSQL_PASSWORD: '123456789'
+      MYSQL_ROOT_PASSWORD: 'password'
+    restart: always
+    volumes:
+      - ./db_MeduzZen:/var/lib/mysql
+    networks:
+      - web
+
+networks:
+  web:
+    driver: bridge
+
+

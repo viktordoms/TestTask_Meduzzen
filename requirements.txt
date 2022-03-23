@@ -1,0 +1,12 @@
+flask_sqlalchemy
+flask
+python-dotenv
+pymysql
+sqlalchemy
+cryptography
+flask_restful
+flask-marshmallow
+flask_migrate
+pytest
+requests
+jsonschema
