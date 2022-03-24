@@ -1,9 +1,40 @@
 import requests
 from jsonschema import validate
+import pytest
 
 from src.schemas.user import USER_SCHEMA
 
-BASE_URL = 'http://172.22.0.3:8005'
+
+BASE_URL = "http://172.22.0.3:8005"
+
+
+
+data_create_user = [
+    ('user1@user', 'user1', '1234567890', '1234567890', 'User add to database', 201),
+    ('user1@user', 'user1', '1234567890', '1234567890', 'User with this email is already exist', 400),
+    ('user20@user', 'user1', '1234567890', '1234567890', 'User with this username is already exist', 400),
+    ('user', 'user2', '1234567890', '1234567890', 'email should be longer than 5 characters', 400),
+    ('user20@user', 'use', '1234567890', '1234567890', 'username should be longer than 4 characters', 400),
+    ('user20@user', 'user20', '1234567', '1234567', 'password should be longer than 8 characters', 400),
+    ('user20@user', 'user20', '1234567890', '1234567', 'password is not curable', 400),
+    (12425435, 'user20', '1234567890', '1234567890', 'email must be string. Enter correct email.', 400),
+    ('user20@user', 1241352, '1234567890', '1234567', 'username must be string. Enter correct username.', 400),
+    ('user20@user', 'user20', 1234567890, '1234567', 'password must be string. Enter correct password.', 400),
+    ('user20@user', 'user20', '1234567890', 1243545435, 'password2 must be string. Enter correct password2.', 400),
+    ('user2@user', 'user2', '1234567890', '1234567890', 'User add to database', 201)]
+
+
+@pytest.mark.parametrize('email, username, password, password2, response_message, status_code', data_create_user)
+def test_create_user(email, username, password, password2, response_message, status_code):
+    data = {
+        "email": email,
+        "password": password,
+        "password2": password2,
+        "username": username
+    }
+    response = requests.post(BASE_URL + '/user', json=data)
+    assert response.status_code == status_code, 'Received status code is not equal to expected'
+    assert response.json()['response'] == response_message
 
 
 def test_get_all():
@@ -11,282 +42,88 @@ def test_get_all():
     response_data = response.json()
 
     assert response.status_code == 200, 'Received status code is not equal to expected'
-    if isinstance(response_data, str):
-        assert response_data == 'Database is empty', "Received response is not equal to expected"
+    if isinstance(response_data, dict):
+        assert response.status_code == 404
+        assert response.json()['response'] == 'Database is empty'
     else:
-        assert len(response_data) >= 1, 'Received json is empty'
-        for user in response_data:
-            validate(user, USER_SCHEMA)
+        assert response.status_code == 200
+        validate(response.json()[0], USER_SCHEMA)
 
 
 def test_get_user_by_id():
-    response_1 = requests.get(BASE_URL + '/user/47')
-    response_data = response_1.json()
-    assert response_1.status_code == 200, 'Received status code is not equal to expected'
-    for user in response_data:
-        validate(user, USER_SCHEMA)
 
-    response_2 = requests.get(BASE_URL + '/user/100000')
-    assert response_2.status_code == 404, 'Received status code is not equal to expected'
-    assert response_2.json()['response'] == 'User not found','Received status code is not equal to expected'
+    response = requests.get(BASE_URL + '/user/1')
+    response_data = response.json()
+
+    if isinstance(response_data, dict):
+        assert response.status_code == 404
+        assert response.json()['response'] == 'User not found'
+    else:
+        assert response.status_code == 200
+        validate(response.json()[0], USER_SCHEMA)
 
 
-def test_create_user():
+data_put_user = [
+    ('user1@user', 'user1', '1234567890', '1234567890', 'User with this email is already exist', 400),
+    ('user3@user', 'user1', '1234567890', '1234567890', 'User with this username is already exist', 400),
+    ('user', 'user1', '1234567890', '1234567890', 'email should be longer than 5 characters', 400),
+    ('user3@user', 'use', '1234567890', '1234567890', 'username should be longer than 4 characters', 400),
+    ('user3@user', 'user3', '1234567', '1234567', 'password should be longer than 8 characters', 400),
+    ('user3@user', 'user3', '1234567890', '1234567', 'password is not curable', 400),
+    (12425435, 'user3', '1234567890', '1234567890', 'email must be string. Enter correct email.', 400),
+    ('user3@user', 1241352, '1234567890', '1234567', 'username must be string. Enter correct username.', 400),
+    ('user3@user', 'user3', 1234567890, '1234567', 'password must be string. Enter correct password.', 400),
+    ('user3@user', 'user3', '1234567890', 1243545435, 'password2 must be string. Enter correct password2.', 400),
+    ('user3@user', 'user3', '1234567890', '1234567890', 'Update successful', 200)]
 
-    user_data_2 = {
-        "email": "user1@user",
-        "password": "123456789",
-        "password2": "123456789",
-        "username": "user1"
+
+@pytest.mark.parametrize('email, username, password, password2, response_message, status_code', data_put_user)
+def test_put_user(email, username, password, password2, response_message, status_code):
+    data = {
+        "email": email,
+        "password": password,
+        "password2": password2,
+        "username": username
     }
-    response_2 = requests.post(BASE_URL + '/user', json=user_data_2)
-    assert response_2.status_code == 400, 'Received status code is not equal to expected'
-    assert response_2.json()['response'] == 'User with this email is already exist'
+    response = requests.put(BASE_URL + '/user/2', json=data)
+    assert response.status_code == status_code, 'Received status code is not equal to expected'
+    assert response.json()['response'] == response_message
 
-    user_data_3 = {
-        "email": "user2@user",
-        "password": "123456789",
-        "password2": "123456789",
-        "username": "user1"
+
+data_patch_user = [
+    ('user1@user', 'user1', '1234567890', '1234567890', 'User with this email is already exist', 400),
+    ('user21@user', 'user1', '1234567890', '1234567890', 'User with this username is already exist', 400),
+    ('user', 'user21', '1234567890', '1234567890', 'email should be longer than 5 characters', 400),
+    ('user21@user', 'use', '1234567890', '1234567890', 'username should be longer than 4 characters', 400),
+    ('user21@user', 'user21', '1234567', '1234567', 'password should be longer than 8 characters', 400),
+    ('user21@user', 'user21', '1234567890', '1234567', 'password is not curable', 400),
+    (12425435, 'user21', '1234567890', '1234567890', 'email must be string. Enter correct email.', 400),
+    ('user21@user', 1241352, '1234567890', '1234567', 'username must be string. Enter correct username.', 400),
+    ('user21@user', 'user21', 1234567890, '1234567', 'password must be string. Enter correct password.', 400),
+    ('user21@user', 'user21', '1234567890', 1243545435, 'password2 must be string. Enter correct password2.', 400),
+    ('user21@user', 'user21', '1234567890', '1234567890', 'Update successful', 200)]
+
+
+@pytest.mark.parametrize('email, username, password, password2, response_message, status_code', data_patch_user)
+def test_patch_user(email, username, password, password2, response_message, status_code):
+    data = {
+        "email": email,
+        "password": password,
+        "password2": password2,
+        "username": username
     }
-    response_3 = requests.post(BASE_URL + '/user', json=user_data_3)
-    assert response_3.status_code == 400, 'Received status code is not equal to expected'
-    assert response_3.json()['response'] == 'User with this username is already exist'
-
-    user_data_4 = {
-        "email": "use",
-        "password": "123456789",
-        "password2": "123456789",
-        "username": "user2"
-    }
-    response_4 = requests.post(BASE_URL + '/user', json=user_data_4)
-    assert response_4.status_code == 400, 'Received status code is not equal to expected'
-    assert response_4.json()['response'] == 'Email should be longer than 5 characters'
-
-    user_data_5 = {
-        "email": "user2@user",
-        "password": "123456789",
-        "password2": "123456789",
-        "username": "us"
-    }
-    response_5 = requests.post(BASE_URL + '/user', json=user_data_5)
-    assert response_5.status_code == 400, 'Received status code is not equal to expected'
-    assert response_5.json()['response'] == 'Username should be longer than 4 characters'
-
-    user_data_6 = {
-        "email": "user2@user",
-        "password": "123456",
-        "password2": "123456",
-        "username": "user2"
-    }
-    response_6 = requests.post(BASE_URL + '/user', json=user_data_6)
-    assert response_6.status_code == 400, 'Received status code is not equal to expected'
-    assert response_6.json()['response'] == 'Password should be longer than 8 characters'
-
-    user_data_7 = {
-        "email": "user2@user",
-        "password": "123456789",
-        "password2": "123456",
-        "username": "user2"
-    }
-    response_7 = requests.post(BASE_URL + '/user', json=user_data_7)
-    assert response_7.status_code == 400, 'Received status code is not equal to expected'
-    assert response_7.json()['response'] == 'Password is not curable'
-
-    user_data_8 = {
-        "email": 123421,
-        "password": "123456789",
-        "password2": "123456",
-        "username": "user2"
-    }
-    response_8 = requests.post(BASE_URL + '/user', json=user_data_8)
-    assert response_8.status_code == 400, 'Received status code is not equal to expected'
-    assert response_8.json()['response'] == 'Email must be string. Enter correct email.'
-
-    user_data_9 = {
-        "email": "user2@user",
-        "password": "123456789",
-        "password2": "123456",
-        "username": 234523
-    }
-    response_9 = requests.post(BASE_URL + '/user', json=user_data_9)
-    assert response_9.status_code == 400, 'Received status code is not equal to expected'
-    assert response_9.json()['response'] == 'Username must be string. Enter correct username.'
-
-    user_data_1 = {
-        "email": "user2@user",
-        "password": "123456789",
-        "password2": "123456789",
-        "username": "user2"
-    }
-    response_1 = requests.post(BASE_URL + '/user', json=user_data_1)
-    assert response_1.status_code == 201, 'Received status code is not equal to expected'
-    assert response_1.json()['response'] == 'User add to database'
+    response = requests.put(BASE_URL + '/user/2', json=data)
+    assert response.status_code == status_code, 'Received status code is not equal to expected'
+    assert response.json()['response'] == response_message
 
 
-def test_patch_user():
-
-    user_data_2 = {
-        "email": "user2@user",
-        "password": "123456789",
-        "username": "user2"
-    }
-    response_2 = requests.patch(BASE_URL + '/user/48', json=user_data_2)
-    assert response_2.status_code == 400, 'Received status code is not equal to expected'
-    assert response_2.json()['response'] == 'User with this email is already exist'
-
-    user_data_3 = {
-        "email": "user3@user",
-        "password": "123456789",
-        "username": "user2"
-    }
-    response_3 = requests.patch(BASE_URL + '/user/48', json=user_data_3)
-    assert response_3.status_code == 400, 'Received status code is not equal to expected'
-    assert response_3.json()['response'] == 'User with this username is already exist'
-
-    user_data_4 = {
-        "email": "use",
-        "password": "123456789",
-        "username": "user3"
-    }
-    response_4 = requests.patch(BASE_URL + '/user/48', json=user_data_4)
-    assert response_4.status_code == 400, 'Received status code is not equal to expected'
-    assert response_4.json()['response'] == 'Email should be longer than 5 characters'
-
-    user_data_5 = {
-        "email": "user3@user",
-        "password": "123456789",
-        "username": "us"
-    }
-    response_5 = requests.patch(BASE_URL + '/user/48', json=user_data_5)
-    assert response_5.status_code == 400, 'Received status code is not equal to expected'
-    assert response_5.json()['response'] == 'Username should be longer than 4 characters'
-
-    user_data_6 = {
-        "email": "user3@user",
-        "password": "123456",
-        "username": "user3"
-    }
-    response_6 = requests.patch(BASE_URL + '/user/48', json=user_data_6)
-    assert response_6.status_code == 400, 'Received status code is not equal to expected'
-    assert response_6.json()['response'] == 'Password should be longer than 8 characters'
-
-    response_7 = requests.patch(BASE_URL + '/user/1000', json=user_data_6)
-    assert response_7.status_code == 404, 'Received status code is not equal to expected'
-    assert response_7.json()['response'] == 'User not found'
-
-    user_data_8 = {
-        "email": 123421,
-        "password": "123456789",
-        "username": "user3"
-    }
-    response_8 = requests.patch(BASE_URL + '/user/48', json=user_data_8)
-    assert response_8.status_code == 400, 'Received status code is not equal to expected'
-    assert response_8.json()['response'] == 'Email must be string. Enter correct email.'
-
-    user_data_9 = {
-        "email": "user3@user",
-        "password": "123456789",
-        "username": 234523
-    }
-    response_9 = requests.patch(BASE_URL + '/user/48', json=user_data_9)
-    assert response_9.status_code == 400, 'Received status code is not equal to expected'
-    assert response_9.json()['response'] == 'Username must be string. Enter correct username.'
-
-    user_data_1 = {
-        "email": "user3@user",
-        "password": "123456789",
-        "username": "user3"
-    }
-    response_1 = requests.patch(BASE_URL + '/user/48', json=user_data_1)
-    assert response_1.status_code == 200, 'Received status code is not equal to expected'
-    assert response_1.json()['response'] == 'Update successful'
+data_delete_user = [
+    (2, 'User delete', 200),
+    (10, 'User not found', 404)]
 
 
-def test_put_user():
-
-    user_data_2 = {
-        "email": "user1@user",
-        "password": "123456789",
-        "username": "user1"
-    }
-    response_2 = requests.patch(BASE_URL + '/user/48', json=user_data_2)
-    assert response_2.status_code == 400, 'Received status code is not equal to expected'
-    assert response_2.json()['response'] == 'User with this email is already exist'
-
-    user_data_3 = {
-        "email": "user4@user",
-        "password": "123456789",
-        "username": "user1"
-    }
-    response_3 = requests.patch(BASE_URL + '/user/48', json=user_data_3)
-    assert response_3.status_code == 400, 'Received status code is not equal to expected'
-    assert response_3.json()['response'] == 'User with this username is already exist'
-
-    user_data_4 = {
-        "email": "use",
-        "password": "123456789",
-        "username": "user4"
-    }
-    response_4 = requests.patch(BASE_URL + '/user/48', json=user_data_4)
-    assert response_4.status_code == 400, 'Received status code is not equal to expected'
-    assert response_4.json()['response'] == 'Email should be longer than 5 characters'
-
-    user_data_5 = {
-        "email": "user4@user",
-        "password": "123456789",
-        "username": "us"
-    }
-    response_5 = requests.patch(BASE_URL + '/user/48', json=user_data_5)
-    assert response_5.status_code == 400, 'Received status code is not equal to expected'
-    assert response_5.json()['response'] == 'Username should be longer than 4 characters'
-
-    user_data_6 = {
-        "email": "user4@user",
-        "password": "123456",
-        "username": "user4"
-    }
-    response_6 = requests.patch(BASE_URL + '/user/48', json=user_data_6)
-    assert response_6.status_code == 400, 'Received status code is not equal to expected'
-    assert response_6.json()['response'] == 'Password should be longer than 8 characters'
-
-    response_7 = requests.patch(BASE_URL + '/user/1000', json=user_data_6)
-    assert response_7.status_code == 404, 'Received status code is not equal to expected'
-    assert response_7.json()['response'] == 'User not found'
-
-    user_data_8 = {
-        "email": 123421,
-        "password": "123456789",
-        "username": "user4"
-    }
-    response_8 = requests.patch(BASE_URL + '/user/48', json=user_data_8)
-    assert response_8.status_code == 400, 'Received status code is not equal to expected'
-    assert response_8.json()['response'] == 'Email must be string. Enter correct email.'
-
-    user_data_9 = {
-        "email": "user4@user",
-        "password": "123456789",
-        "username": 234523
-    }
-    response_9 = requests.patch(BASE_URL + '/user/48', json=user_data_9)
-    assert response_9.status_code == 400, 'Received status code is not equal to expected'
-    assert response_9.json()['response'] == 'Username must be string. Enter correct username.'
-
-    user_data_1 = {
-        "email": "user4@user",
-        "password": "123456789",
-        "username": "user4"
-    }
-    response_1 = requests.patch(BASE_URL + '/user/48', json=user_data_1)
-    assert response_1.status_code == 200, 'Received status code is not equal to expected'
-    assert response_1.json()['response'] == 'Update successful'
-
-
-def test_delete_user_by_id():
-    response_1 = requests.delete(BASE_URL + '/user/49')
-    assert response_1.status_code == 200, 'Received status code is not equal to expected'
-    assert response_1.json()['response'] == 'User delete', 'Received status code is not equal to expected'
-
-    response_2 = requests.get(BASE_URL + '/user/100000')
-    assert response_2.status_code == 404, 'Received status code is not equal to expected'
-    assert response_2.json()['response'] == 'User not found', 'Received status code is not equal to expected'
+@pytest.mark.parametrize('id, response_message, status_code', data_delete_user)
+def test_delete_user_by_id(id, response_message, status_code):
+    response = requests.delete(BASE_URL + f'/user/{id}')
+    assert response.status_code == status_code, 'Received status code is not equal to expected'
+    assert response.json()['response'] == response_message

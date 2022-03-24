@@ -57,6 +57,7 @@ class UserView(Resource):
         if user:
             try:
                 data = {
+                    'id': id,
                     "username": request.json['username'],
                     "email": request.json['email'],
                     "password": request.json['password'],
@@ -74,9 +75,9 @@ class UserView(Resource):
                 user.password = generate_password_hash(request.json['password'])
                 try:
                     db.session.commit()
-                    return {'request': 'Update successful'}, 200
+                    return {'response': 'Update successful'}, 200
                 except:
-                    return {'request': 'Update error'}, 400
+                    return {'response': 'Update error'}, 400
         else:
             return {'response': 'User not found'}, 404
 
@@ -94,6 +95,7 @@ class AddUsersView(Resource):
             return {"response": "Enter all dates"}, 400
 
         data = {
+            "id": id,
             "username": username,
             "email": email,
             "password": password,
